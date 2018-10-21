@@ -1,0 +1,45 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: test-vault-integration
+spec:
+  replicas: 1
+  template:
+    spec:
+      initContainers:
+      - name: get-vault-token
+        image: k8s-vault-integration/vault-init
+        imagePullPolicy: Always
+        env:
+        - name: VAULT_ADDR
+          value: http://vault:8200
+        - name: VAULT_ROLE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: VAULT_K8S_MOUNT_PATH
+          value: kubernetes
+        - name: TOKEN_PATH
+          value: /var/secrets
+        volumeMounts:
+        - name: vault-token
+          mountPath: /var/secrets
+      containers:
+      - args:
+        - while true; do sleep 3600 ; done
+        command:
+        - sh
+        - -c
+        volumeMounts:
+        - name: vault-token
+          mountPath: /var/secrets/
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        name: test-vault-integration
+      serviceAccountName: vault-auth
+      volumes:
+      - name: vault-token
+        emptyDir: {}
+      restartPolicy: Always
+      dnsPolicy: Default
